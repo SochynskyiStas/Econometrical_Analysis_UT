@@ -1,0 +1,161 @@
+---
+title: "Lab 3"
+output: html_document
+author: "Stanislav Sochynskyi"
+date: "03/12/2019"
+---
+#About QUIZ
+
+* The quiz will start at 13:30 and finish at 15:30 (untill 15:44)
+* There won't be an option to upload anything to Moodle after 15:45.
+* Individual work(not in pairs). 
+* All course material and practical session material are allowed. **Phones are not allowed. Any chatting or helping each other is not allowed.** you can use your own laptops. 
+* The quiz will start at 13:30 and finish at 15:30.
+* What you should submit: 
+    + a **Word file** where the questions are answered with the relevant R-output copy pasted. For example, you can copy paste the estimation output or test results and then write their comments under them. 
+    + Submit the **R code** that you will write. If you need to write some things down to a paper (equations), you can do so and submit to me these papers as well. 
+    + Alternatively: you could give the R output and R-code, and write all your answers to a paper and submit that.
+    
+#What are your questions about Quiz?
+
+#Practical session #3
+
+We will work with wage2.csv dataset again! Yay!
+```{r}
+df <- read.csv("quiz2.csv")
+head(df)
+```
+```{r}
+model <- lm(ln_wage ~ grade + married + black + age + I(age^2) + ttl_exp + I(ttl_exp^2) + married*black + married*grade, data = df)
+
+summary(model)
+```
+
+
+```{r}
+library(car)
+linearHypothesis(model, c('married:black=0','grade:married=0'))
+```
+
+
+## Equation
+
+$log(wage) = \beta_{0} + \beta_{1}educ + \beta_{2}exper + \beta_{3}tenure + \beta_{4}married + \beta_{5}black + \beta_{6}south + \beta_{7}urban + u$
+
+## Task 1. Comment on the coefficients. What is the ceteris paribus approximate difference in the monthly's salary between blacks and nonblacks? Is this difference significant? How about the difference for married and singles?
+
+```{r}
+model <- lm(lwage ~ educ + exper + tenure + married + black + south + urban, data = df_wage)
+summary(model)
+```
+**Answer:**
+
+* Black have at the average 18.8350% lower salary than non-black.
+
+* Is this difference significant? p-value is 6.84e-07, which means the difference is statistically significant at 1% significance level.
+
+How about the difference for married and singles?
+
+* Married have at the average 19.9417% higher salary than single
+Is this difference significant?
+
+* Is this difference significant? p-value is 3.98e-07, which means the difference is statistically significant at 1% significance level.
+
+##Task 2. Add the variables $exper^{2}$ and $tenure^{2}$ to the equation and estimate again. Show that they are not significant.
+
+```{r}
+model2<-lm(lwage~educ + exper + tenure + married + black + south + urban + I(exper^2) + I(tenure^2), data=df_wage)
+
+summary(model2)
+```
+As always we look at p-value:
+
+- $exper^{2}$ - 0.830622; Not significant (above 0.1)
+
+- $tenure^{2}$ - 0.091188; statistically significant at 10% level of significance.
+
+We already know how to test joint significance!
+```{r}
+library(car)
+
+linearHypothesis(model2, c('I(exper^2)=0', 'I(tenure^2)=0'))
+```
+
+$exper^{2}$ and $tenure^{2}$ are jointly insignificant.
+
+##Task 3. Extend the model in part (1) to allow the return to education to depend on race and test whether the return on education depends on race.
+
+###OLD:
+$log(wage) = \beta_{0} + \beta_{1}educ + \beta_{2}exper + \beta_{3}tenure + \beta_{4}married + \beta_{5}black + \beta_{6}south + \beta_{7}urban + u$
+
+###NEW:
+$log(wage) = \beta_{0} + \beta_{1}educ + \beta_{2}exper + \beta_{3}tenure + \beta_{4}married + \beta_{5}black + \beta_{6}south + \beta_{7}urban + \beta_{8}educ*black + u$
+
+```{r}
+model3<-lm(lwage~educ + exper + tenure + married+ black + south + urban + educ*black, data = df_wage)
+
+summary(model3)
+```
+
+p-value of $educ:black$ is **0.262603** , which is higher than 0.1. $educ*black$ is not statistically significant. Returns on education does not depend on race.
+
+* The "effect" of education for nonblack is 6.7115%
+* The "effect" of education for black is (6.7115% -2.262 %) = 4.4495%
+
+ 
+##Task 4. Extend the model in part (1) to allow the return to education to depend on marital status and race and test whether the return on education depends jointly on marital status and race.
+
+###OLD:
+$log(wage) = \beta_{0} + \beta_{1}educ + \beta_{2}exper + \beta_{3}tenure + \beta_{4}married + \beta_{5}black + \beta_{6}south + \beta_{7}urban + u$
+
+###NEW:
+$log(wage) = \beta_{0} + \beta_{1}educ + \beta_{2}exper + \beta_{3}tenure + \beta_{4}married + \beta_{5}black + \beta_{6}south + \beta_{7}urban + \beta_{8}educ*black*married + u$
+
+
+```{r}
+model4<-lm(lwage~educ+exper + tenure + married + black + south + urban + educ*black*married, data=df_wage)
+
+summary(model4)
+```
+Joint effect is insignificant: p-value is 0.96 (above 0.1) therefore we can not reject $H_{0}: \beta_{educ*married*black} = 0$
+
+**Task:** Test whether the return on education depends jointly on marital status and race
+
+```{r}
+model_42<-lm(lwage~educ + exper + tenure + married + black + south + urban+ educ*black + educ*married, data=df_wage)
+
+linearHypothesis(model_42, c('educ:black=0','educ:married=0'))
+
+#linearHypothesis(model4,'educ:married:black=0')
+```
+
+Joint effect is insignificant: p-value is 0.3961 (above 0.1) therefore we can not reject $H_{0}: \beta_{educ*black}$ and $\beta_{educ*married} = 0$
+
+
+##Task 5. Start with the equation in part (1) but now allow for wages to differ for four groups: married and black(1), married and \\nonblack(2), single and black(3), single and nonblack(4).
+
+###OLD:
+$log(wage) = \beta_{0} + \beta_{1}educ + \beta_{2}exper + \beta_{3}tenure + \beta_{4}married + \beta_{5}black + \beta_{6}south + \beta_{7}urban + u$
+
+###NEW:
+$log(wage) = \beta_{0} + \beta_{1}educ + \beta_{2}exper + \beta_{3}tenure + \beta_{4}married + \beta_{5}black + \beta_{6}south + \beta_{7}urban + \beta_{8}black*married + u$
+
+```{r}
+model5 <- lm(lwage ~ educ + exper+ tenure + married + black + south + urban + black*married, data = df_wage)
+
+summary(model5)
+```
+
+Married and black have 6.13% higher salary at the average compared to: black and non-married, single and nonblack, *married and non-black(?)*.
+
+Married and nonblack have 18.89% higher salary at the average compared to single and nonblack.
+
+The difference is 0.061354 - 0.188915 = -0.127561. Married black person earns about 12 % less than a comparable, married nonblack person.
+
+Is the difference significant?
+
+```{r}
+linearHypothesis(model5, c('married:black=married'))
+```
+
+**Answer:** This difference is not statistically significant

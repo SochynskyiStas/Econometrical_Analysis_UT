@@ -1,0 +1,477 @@
+---
+title: "Lab 1"
+output: html_document
+author: "Stanislav Sochynskyi"
+date: "03/12/2019"
+---
+#Recap
+
+First, let's do a small recap of the last practical session. This is how to read a file.
+```{r}
+df <- read.csv("bwght.csv")
+#names(df) - with this we can check the names of the columns without values
+#head(df) #gives us first 6 rows of dataset with values
+```
+
+Now, let's build a model. We want to regress on child birthweight (*bwght*)
+
+$bwght = \beta_{0}(\alpha)+\beta_{1}cigs+\varepsilon$
+
+```{r}
+model <- lm(bwght ~ cigs, data = df)
+summary(model)
+```
+**Residuals** are essentially the difference between the actual observed response values (distance to stop dist in our case) and the response values that the model predicted. A residual is the vertical distance between a data point and the regression line. They are positive if they are above the regression line and negative if they are below the regression line.
+
+**Pr(>|t|)** is the significance level. A small p-value for the intercept and the slope indicates that we can reject the null hypothesis which allows us to conclude that there is a relationship between speed and distance.
+
+**Residual Standard Error**: This is the standard deviation of the residuals.  Smaller is better.
+
+It is then used to test whether or not the coefficient is significantly different from zero.  If it isn't significant, then the coefficient really isn't adding anything to the model and could be dropped or investigated further.  
+
+**Multiple R-Squared** (coefficient of determination).
+Multiple R-Squared works great for simple linear (one variable) regression.  However, in most cases, the model has multiple variables.  The more variables you add, the more variance you're going to explain.  So you have to control for the extra variables.
+
+**Adjusted R-Squared** normalizes Multiple R-Squared by taking into account how many samples you have and how many variables you're using.
+
+**F-Statistic** is a "global" test that checks if at least one of your coefficients are nonzero.
+
+CORRECT THE MISTAKE! Confidence interval.
+```{r}
+confint(model,level=.95)
+```
+
+***confint*** returns a list of two-column dataframes (one dataframe for each variable specified in 'par') including lower and upper bounds for given confidence intervals
+
+```{r}
+confint(model, par ='cigs', level=.90, alternative='less')
+#parm - what variables/columns to feed show. c(2,3)
+#level - defines confident level 
+#alternative - less/great OR "two-sided"
+```
+
+Measure partial effecr. Here we look at AME (Average marginal effect)
+```{r}
+library(margins) #for partial effect
+margin<-margins(model) 
+summary(margin)
+```
+**VIF**: It is possible to have very low correlations among all variables but perfect collinearity. If you have 11 independent variables, 10 of which are independent and the 11th is the sum of the other 10, then correlations will be about 0.1 but collinearity is perfect. So, high VIF does not imply high correlations. 
+If any (correlation coefficient or VIF) critical value is higher than described above, you should remove one of correlated independent variables from your set, or estimate two separate models.
+
+VIF can be applied for dummies, if they converted to 0 or 1 (not categorical)
+
+F-test function
+```{r}
+library(car)
+model_unrest <- lm(bwght ~ cigs + motheduc+faminc+fatheduc, data = df)
+summary(model_unrest)
+```
+
+```{r}
+model_rest <- lm(bwght ~ cigs + faminc, data = df)
+summary (model_rest)
+```
+##Task: cross check whether it is done correctly with presentation#
+
+**We take Multiple R-squared** for calculations
+
+$F = \frac{\frac{(R_{long}^{2} - R_{short}^{2})}{q}}{\frac{(1-R_{long}^{2})}{(n-k-1)}} = \frac{\frac{(0.02952 - 0.0284)}{2}}{\frac{(1-0.02952)}{(675)}} = \frac{0.00056}{0.00143774814} = 0.38949798258$
+
+CODE METHOD for F-statistics
+```{r}
+nullhyp <- c("motheduc","fatheduc")
+linearHypothesis(model_unrest, nullhyp)
+```
+
+#PRACTICAL SESSION 2
+
+##Part 1 - Multiple linear regression: focus on hypothesis testing and functional form
+
+Today, we are interested in analyzing the "returns to education" in our data.
+
+$\log(wage) = \alpha + \beta_{1}educ + \beta_{2}feduc + \beta_{3}meduc + \beta_{4}IQ + \beta_{5}exper + \beta_{6}educ^{2} + \varepsilon$
+
+First of all we have to import the data "CARD.DTA". For that we install foreign package.
+```{r}
+#install.packages("foreign")
+library(foreign)
+CARD <- read.dta("http://fmwww.bc.edu/ec-p/data/wooldridge/card.dta")
+#head(CARD)
+```
+
+###Task (a).
+
+1. **Question**: What could be the reason for including IQ variables to the equation? (ommited variable: ability). 
+
+**Answer**: ~~The reason of including IQ to the equation is to control for the omitted variable bias: ability is omitted, IQ can be used as a proxy for the omitted ability.~~
+
+2. **Question**: What could be the idea of including square of experience to equation?
+
+**Answer**: ~~The idea of including square of experience to the equation is to control for non-linear association of experience and wage.~~
+
+###Task (b). Estimate the regression in R. Discuss which coefficients are statistically significant.
+
+```{r}
+model<-lm(lwage~educ+fatheduc+ motheduc+IQ+exper+I(exper^2), data=CARD)
+summary(model)
+```
+**Question**: What is the ceteris paribus effect of one more year of education on
+wage?
+
+**Answer**: ~~One additional year of education is associated with 6.89440%
+higher wage keeping all other factors fixed.~~
+
+
+###Task (c). Comment on the overall significance of the regression. 
+
+**Question**: What is the null hypothesis in this case?
+
+**Answer**: $\beta_{1} = \beta_{2} = \beta_{3} = \beta_{4} = \beta_{5} = \beta_{6} = 0$
+
+**Question**: Comment on the overal significance.
+
+**Answer**: ~~Regression is statistically significant at 1% level.~~
+
+###Task (d). Calculate the correlations between the regressors, and also the variance inflation factors. Comment if there is a possible effect of multicollinearity.
+
+```{r}
+combined <- cbind(CARD$educ, CARD$fatheduc, CARD$motheduc, CARD$IQ, CARD$exper, CARD$expersq)
+cor(combined, use = "complete.obs")
+```
+
+* The correlation between exper and exper squared is 0.969
+* All others correlations are lower in absolute (abs) value than 0.6
+which we neglect (and, basically, can explain).
+
+**Question**: Comment if there is a possible effect of multicollinearity.
+
+```{r}
+library(car)
+vif(model)
+```
+**Answer**:
+* But multicollinearity is not a problem in this case since we are not interested in evaluating the effect of changing experience without changing experience squared.
+    + Experience and experience squared are not linearly dependent (we squared experience, which is nonlinear function of experience)
+    + Multicollinearity has to be checked and problems have to be solved when you want to estimate the independent effect of two variables which happen to be correlated by chance.
+    + We include experience squared in the regression for testing the nonlinear effect of experience on standartized score.
+
+
+###Task (e). Test that one more year of education increases wage by 3%, ceteris paribus:
+
+$H_{0}:\beta_{1} = 0.03$
+
+$t = \frac{\beta_{1} - 0.03}{S.E.} = \frac{0.0689440 - 0.03}{0.0057467} = 6.777584$
+
+Rejection rule: $|t| > t_{critical}$ at 5 % significance level.
+$6.777584 > 1.96$ - therefore, we can reject $H_{0}:\beta_{1} = 0.03$, in favour of two - sided alternatve $H_{A}:\beta_{1} \neq 0.03$
+p-value is:
+```{r}
+2*pt(-abs(6.777584),df=1612 )
+```
+###Task (f). Marginal effect of experience
+
+Calculate the marginal effect of experience on wages for an **average experience level**. Test if this marginal effect is significant:
+
+$H_{0}:\beta_{5} + 2*\beta_{6}\overline{exper} = 0$
+```{r}
+library(margins)
+summary(margins(model))
+```
+
+**Answer**: ~~p-value is 0.0000, which means we can reject Null Hypothesis at 1% significance level.~~
+
+###Task (g). Test that marginal effect of experience on wages
+
+Test that marginal effect of experience on wages is zero for any experience level:
+
+$H_{0}:\beta_{5} = \beta_{6} = 0$
+
+$F = \frac{\frac{(R_{l}^{2} - R_{s}^{2})}{q}}{\frac{(1-R_{l}^{2})}{df_{long}}}$
+
+
+```{r}
+library(car)
+
+model2<-lm(lwage ~ educ + fatheduc + motheduc + IQ, data=CARD)
+summary(model)
+summary(model2)
+
+((0.1759 - 0.05011)/2)/((1 - 0.1759)/(1612)) #F-statistics
+```
+
+```{r}
+pf(123.0272, df1=2, df2=1612, lower.tail=FALSE) #Compare to the critical value from statistical table
+
+linearHypothesis(model, c("exper=0", 'I(exper^2)=0'))
+```
+p-value is small, hence, We can reject the H0.
+
+
+Comment on the difference between parts (f) and (g).
+###Task (h). Optimal level of experience according to the estimation results?
+
+$\frac{dlwage}{dexper} = 0.0994181 - 2*0.0028468exper = 0$
+
+$exper = \frac{0.0994181}{2 * 0.0028468} = 17.46138$
+
+**Answer**: ~~The optimal level of experience is 17.5 years.~~
+
+```{r}
+library(sjPlot)
+library(ggplot2)
+plot_model(model, type = "eff", terms = "exper")
+```
+
+
+###Task (i). Test that once educ; feduc and meduc are controlled for, IQ, exper and $exper^{2}$ do not significantly affect the log(wage).
+
+$H_{0}:\beta_{4} = \beta_{5} = \beta_{6} = 0$
+
+```{r}
+linearHypothesis(model, c("IQ = 0", "exper = 0", "I(exper^2) = 0"))
+```
+
+**Answer**: p-value is small, therefore we can reject $H_{0}:\beta_{4} = \beta_{5} = \beta_{6} = 0$ at 1% significance level.
+
+###Task (j). Test that the marginal effects of fatherís education and motherís education are the same.
+
+$H_{0}:\beta_{2} = \beta_{3}$, versus two-sided alternative.
+
+For this purpose use an F-test. (Restricted regression uses: $pareduc = feduc + meduc$).
+
+```{r}
+linearHypothesis(model, c("fatheduc=motheduc"))
+```
+
+p-value is higher that 0.1, therefore we cannot reject $H_{0}:\beta_{2} = \beta_{3}$
+
+```{r}
+pareduc<-CARD$fatheduc + CARD$motheduc
+model3<-lm(lwage~educ + pareduc + IQ + exper + I(exper^2), data = CARD)
+summary(model3)
+```
+
+$F = \frac{\frac{(R_{l}^{2} - R_{s}^{2})}{q}}{\frac{(1-R_{l}^{2})}{df_{long}}}$
+
+$F = \frac{\frac{(0.1759 - 0.1752)}{1}}{\frac{(1-0.1759)}{1612}}} = 1.369251$
+
+```{r}
+pf(1.369251, df1=1, df2=1612, lower.tail=F)
+```
+
+####Alternative
+```{r}
+pareduc<-CARD$fatheduc + CARD$motheduc
+model4<-lm(lwage~educ + fatheduc + pareduc + IQ + exper + I(exper^2), data=CARD)
+summary(model4)
+
+#look at the fatheduc -0.0079004 0.0067011 -1.179 0.2386
+```
+
+##Part 2 -  Multiple linear regression: dummy variables and interaction terms
+
+We are interested in explaining the CEO salaries using the following equation:
+
+$lsalary = \beta_{0} + \beta_{1}lsales + \beta_{2}roe + \beta_{3}ros+ \beta_{4}finance + \beta_{5}consprod + \beta_{6}utility + \varepsilon$
+
+* salary: 1990 salary, thousands $
+* pcsalary: percent change salary, 89-90
+* sales: 1990 firm sales, millions $
+* roe: return on equity, 88-90 avg
+* pcroe: percent change roe, 88-90
+* ros: return on firm's stock, 88-90
+* indus: =1 if industrial firm
+* finance: =1 if financial firm
+* consprod: =1 if consumer product firm
+* utility: =1 if transport. or utilties
+* lsalary: natural log of salary
+* lsales: natural log of sales
+
+For this task we import "CEOSAL1.DTA"
+```{r}
+ceosa <- read.dta("http://fmwww.bc.edu/ec-p/data/wooldridge/ceosal1.dta")
+head(ceosa)
+```
+###Task (a).
+
+Look at the variables in the data set and state what is the reference sector? (i.e. which sector is omitted such that the inference is made in comparison to that sector)
+
+**Answer:** Industrial sector is a reference sector.
+
+###Task (b).
+
+Estimate the regression and comment on the significance of the coefficients. In particular comment on the coefficient and significance of the approximate percentage difference between each of the sectors included in the regression and the reference sector. (i:e: *finance sector* vs. *reference sector*, *consumer products sector* vs. *reference sector* etc.)
+
+```{r}
+options(scipen = 999)
+model<-lm(lsalary ~ lsales + roe + ros + finance + consprod + utility, data = ceosa)
+summary(model)
+```
+**Answer**: 
+
+For $\hat{\beta_{1}} = 0, \hat{\beta_{2}} = 0, \hat{\beta_{3}} = 0, \beta_{3}$ is the mean of industrial sector.
+
+$\hat{\beta_{4}}$ is the difference between the mean of finance and the mean of industrial sector
+$\hat{\beta_{5}}$ is the difference between the mean of consumer products sector and the mean of industrial sector
+$\hat{\beta_{6}}$ is the difference between the mean of utility sector and the mean of industrial sector.
+
+* For the finance sector salaries at the average 15.85% higher than for the industrial sector holding other factors fixed. The 'effect' is significant at 10% significance level.
+
+* For the consumer products sector salaries at the average 18.34% higher than for the industrial sector holding other factors fixed. The 'effect' is significant at 5% significance level.
+
+* For the utility sector salaries at the average 28.22% lower than for the industrial sector holding other factors fixed. The 'effect' is significant at 1% significance level.
+
+###Task (c).
+
+Test if one percent increase in annual sales would increase the salary by more than 0.5 percent.
+
+$H_{0}:\beta_{1} = 0.5$
+$H_{A}:\beta_{1} > 0.5$ (right-tail test)
+
+$t = \frac{\beta_{1} - 0.5}{S.E.} = \frac{0.25603250 - 0.5}{0.03419898} = -7.133765$
+
+Ctirical value ($t_{critical}$) for 5% is **qt(0.95,202)** is 1.652432. Rejection rule: we need to compare whether our test statistic is higher than critical value, i.e. $t > t_{critical}$. In this case -7.133765 is not higher than 1.652432 and therefore we cannot reject $H_{0}:\beta_{1} = 0.5$ in favor of Alternative that $H_{A}:\beta_{1} > 0.5$ at 5% significance level.
+
+To find a p-value:
+```{r}
+pt(-7.133765, df=202, lower.tail = FALSE)
+```
+###Task (d). Correlation and VIF.
+
+**Task:** Calculate the correlations between the variables and the variance inflation factor (VIF). Comment if there is a possible effect of multicollinearity.
+
+```{r}
+combined<-cbind(ceosa$lsalary, ceosa$lsales, ceosa$roe, ceosa$ros, ceosa$finance, ceosa$consprod, ceosa$utility)
+cor(combined, use = "complete.obs")
+```
+**Answer:** ~Correlations are lower than 0.5 in absolute value~
+
+```{r}
+library(car)
+vif(model)
+```
+
+**Answer:** VIFs are smaller than 10 - there is no multicollinearity in the data.
+
+###Task (e). 
+
+**Task:** Discuss the overall significance of the regression. Comment on the R-squared of the regression.
+
+```{r}
+summary(model)
+```
+
+* ~~F-statistic: 18.68 on 6,202 DF, p-value: < 0.00000000000000022. The regression is overall significant at 1% significance level.~~
+* ~~The regression explains 35.69% of variation of the dependent variable.~~
+
+###Task (f).
+
+Test the null hypothesis that the return on equity($roe$) and return on stocks($ros$) have the same partial effect on salary, ceteris paribus: 
+
+$H_{0}:\beta_{2} = \beta_{3}$
+
+$H_{0}:\beta_{2} - \beta_{3} = \theta = 0$
+$H_{A}:\beta_{2} - \beta_{3} = \theta \neq 0$
+
+$\beta_{2} = \theta + \beta_{3}$
+
+$lsalary = \beta_{0} + \beta_{1}lsales + \beta_{2}roe + \beta_{3}ros+ \beta_{4}finance + \beta_{5}consprod + \beta_{6}utility + \varepsilon$
+
+$lsalary = \beta_{0} + \beta_{1}lsales + \theta roe + \beta_{3}(ros + roe) + \beta_{4}finance + \beta_{5}consprod + \beta_{6}utility + \varepsilon$
+
+```{r}
+new <- ceosa$roe + ceosa$ros
+options(scipen = 999)
+model2<-lm(lsalary ~ lsales + roe + new + finance + consprod + utility, data=ceosa)
+summary(model2)
+```
+
+We can not reject the null hypothesis $H_{0}:\beta_{2} = \beta_{3}$.
+
+```{r}
+linearHypothesis(model, "roe-ros = 0")
+```
+
+###Task (g).
+
+Test the null hypothesis that the partial effect of being in any sector
+other than the reference sector is zero.
+
+$H_{0}: \beta_{4} = \beta_{5} = \beta_{6} = 0$
+$H_{A}: H_{0} is not true$
+
+```{r}
+library(car)
+linearHypothesis(model, c("finance=0","consprod=0", 'utility=0'))
+```
+
+We can reject $H_{0}: \beta_{4} = \beta_{5} = \beta_{6} = 0$ at 1% significance level.
+
+###Task (h).
+
+Could we use the estimation results to test the approximate difference between the finance and utility sectors? Why/why not?
+
+From the estimation result of our baseline model we cannot test the difference between the finance and utility sectors, since standard error of difference between the finance and utility sectors is not equal to the difference of standard errors.
+
+We can by generating a new variable finance-utility
+
+$H_{0}:\beta_{4} - \beta_{6} = \theta = 0$
+$H_{A}:\beta_{4} - \beta_{6} = \theta \neq 0$
+
+$\beta_{4} = \theta + \beta_{6}$
+
+$lsalary = \beta_{0} + \beta_{1}lsales + \beta_{2}roe + \beta_{3}ros+ \beta_{4}finance + \beta_{5}consprod + \beta_{6}utility + \varepsilon$
+
+$lsalary = \beta_{0} + \beta_{1}lsales + \beta_{2}roe + \beta_{3}ros + \theta finance + \beta_{5}consprod + \beta_{6}(utility + finance) \varepsilon$
+
+```{r}
+new2<-ceosa$finance + ceosa$utility
+options(scipen = 999)
+model3<-lm(lsalary ~ lsales + roe+ ros + consprod + finance + new2, data=ceosa)
+summary(model3)
+summary(model)
+```
+
+* ~~difference between coefficients 0.15848783-(-0.28220034) = 0.4406882, while in the new generated variable the coefficient is 0.44068817~~
+
+* ~~difference between standard errors 0.08938230-0.09980811 = -0.01042581, while in the new generated variable the standard error is 0.10393872. Standard error cannot be negative.~~
+
+###Task (i).
+
+**Task:** How would you reformulate this equation to state that return on stocks has addiitional effect if the firm is in finance sector?
+
+**Answer:** ~~interaction term of ros with finance~~
+
+$lsalary = \beta_{0} + \beta_{1}lsales + \beta_{2}roe + \beta_{3}ros+ \beta_{4}finance + \beta_{5}consprod + \beta_{6}utility + \beta_{7}(roe*finance) + \varepsilon$
+
+###Task (j). Approximate percentage difference between the finance and reference sector.
+
+**Task:** Calculate the approximate percentage difference between the finance and reference sector. Is this difference significant for an average stock return?
+
+$lsalary = \beta_{0} + \beta_{1}lsales + \beta_{2}roe + \beta_{3}ros+ \beta_{4}finance + \beta_{5}consprod + \beta_{6}utility + \beta_{7}(roe*finance) + \varepsilon$
+
+**Note:** average stock return for the finance, because it corresponds to $\beta_{4} + \beta_{7}ros$ if "finance" = 1
+
+```{r}
+options(scipen = 999) #Force R not to use exponential notation
+model4<-lm(lsalary ~ lsales + roe + ros + finance + consprod + utility +ros*finance, data = ceosa)
+summary(model4)
+```
+
+```{r}
+options(scipen = 999)
+library(margins)
+summary(margins(model4))
+```
+**Answer:**
+
+* ~~The approximate percentage difference between the finance and reference sector is 16.08%.~~
+
+* ~~This difference is significant for an average stock return at 10% significance level.~~
+```{r}
+library(sjPlot)
+library(ggplot2)
+plot_model(model4, type = "int")
+```
+

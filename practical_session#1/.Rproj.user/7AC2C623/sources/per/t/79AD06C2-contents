@@ -1,0 +1,61 @@
+---
+title: "practical_session_1"
+author: "Stanislav Sochynskyi"
+date: "November 24, 2019"
+output: html_document
+---
+
+Read dataset. 
+```{r}
+df<-read.csv("bwght.csv", sep=",")
+head(df)
+```
+
+Plot the variables *bwght* and *cigs* in a scatter plot. Discuss the relationship between these variables.
+```{r}
+library("ggplot2")
+
+ggplot(df)+
+  geom_point(aes(x = df$cigs, y = df$bwght))+
+  ggtitle("Relationship between birthweight of child and cigs smoked per day")+
+  xlab("Cigarettes smoked per day") + ylab("Birth weight of a child")
+cor(df$cigs, df$bwght) #-0.1507618
+```
+Task 2. Explain why we expect causality between the two variables *bwght* and *cigs*.
+#https://en.wikipedia.org/wiki/Smoking_and_pregnancy
+
+Discuss if the model satisfies the basic assumptions of the SLR. 
+#Assumption SLR1 (linear in parameters) is satisfied because we assume the linear relationship between the variables
+#Assumption SLR2 (random sampling) is satisfied because the data is a survey which use randomizationg in methodology
+#Assumption SLR3 (zero conditional mean) - wait for the next slide
+
+In particular do we expect correlation between the error and the regressor? 
+
+What is the consequence of this correlation? How is it called in econometrics?
+
+Task 3.
+
+Task 4.
+```{r}
+model_1 <- lm(bwght ~ cigs, data = df)
+summary(model_1)
+#nrow(df)
+```
+119.77190 - Intercept (basically our alpha in the equation). Thus the average birth weight of the child for non-smoking female is 119 whatever the measurment is.
+Slope: each additional cigarette smoked is associated with 0.51 lower birth weight.
+
+#The significance level is the probability of rejecting the null hypothesis when it is true. 
+
+#The coefficient Standard Error measures the average amount that the coefficient estimates vary from the actual average value of our response variable.
+
+```{r}
+2*pt(-abs(209.267), df = 1386)
+```
+```{r}
+2*pt(-abs(-5.678), df = 1386)
+```
+```{r}
+confint(model_1, level = .9)
+```
+
+

@@ -1,0 +1,168 @@
+---
+title: "practical_session_1"
+author: "Stanislav Sochynskyi"
+date: "November 24, 2019"
+output: html_document
+---
+##PART 1
+Read dataset. 
+```{r}
+df<-read.csv("bwght.csv", sep=",")
+head(df)
+```
+
+Plot the variables *bwght* and *cigs* in a scatter plot. Discuss the relationship between these variables.
+```{r}
+library("ggplot2")
+
+ggplot(df)+
+  geom_point(aes(x = df$cigs, y = df$bwght))+
+  ggtitle("Relationship between birthweight of child and cigs smoked per day")+
+  xlab("Cigarettes smoked per day")+ 
+  ylab("Birth weight of a child")+
+  geom_smooth(aes(x = df$cigs, y = df$bwght), se=FALSE)
+```
+```{r}
+cor(df$cigs, df$bwght) #-0.1507618
+```
+```{r}
+model_1 <- lm(bwght ~ cigs, data = df)
+summary(model_1)
+#nrow(df)
+```
+P-value manually
+```{r}
+2*pt(-abs(209.267), df = 1386)
+2*pt(-abs(-5.678), df = 1386)
+```
+
+```{r}
+pf(32.24, df1=1, df2=1386, lower.tail=F)
+```
+
+```{r}
+-0.51377-1.96*0.09049
+-0.51377+1.96*0.09049
+```
+
+```{r}
+119.77190-1.96*0.57234
+119.77190+1.96*0.57234
+```
+```{r}
+confint(model_1, level=.95)
+```
+Calculating one-sided confidence interval
+```{r}
+- 0.51377-1.64*0.09049
+confint(model_1, par="cigs", level=.90, alternative="less")
+
+```
+
+```{r}
+model_2<-lm(bwght~cigs -1, data=df)
+summary(model_2)
+
+```
+###Task (J).
+```{r}
+model_2<-lm(bwght~cigs - 1, data=df)
+summary(model_2)
+```
+
+```{r}
+plot(df$cigs, df$bwght, xlab="Cigarettes smoked per day",
+ylab="Birth weight of a child")+abline(lm(bwght~cigs -1, data=df))
+
+```
+```{r}
+plot(df$cigs, df$bwght, xlab="Cigarettes smoked per day",
+ylab="Birth weight of a child")+abline(lm(bwght~cigs, data=df))
+```
+
+###Task (K).
+```{r}
+model_3<-lm(bwght~packs, data=df)
+summary(model_3)
+```
+
+###Task (l).
+```{r}
+cor(df$cigs, df$packs)
+```
+
+```{r}
+model_4<-lm(bwght~packs + cigs, data=df)
+summary(model_4)
+
+```
+
+##PART 2
+```{r}
+model_7<-lm(bwght~cigs+faminc, data=df)
+summary(model_7)
+```
+
+##PART 3
+```{r}
+df_2<-read.csv("attend.csv", sep=",")
+head(df)
+```
+
+```{r}
+new_model<-lm(stndfnl~atndrte + priGPA+I(priGPA^2)+ACT, data=df_2)
+summary(new_model)
+```
+
+```{r}
+new_model_2<-lm(stndfnl ~ atndrte + ACT, data=df_2)
+summary(new_model_2)
+```
+```{r}
+f= ((0.2176-0.1676)/2)/((1-0.2176)/675)
+f
+```
+P-value
+```{r}
+pf(21.63, df1=2, df2=675, lower.tail=F)
+```
+The critical value is
+```{r}
+qf(0.05, df1=2, df2=675, lower.tail=F) #tcrit
+```
+```{r}
+check<-cbind(df_2$atndrte, df_2$priGPA, df_2$priGPA^2, df_2$attend) #combines into matrix
+cor(check)
+```
+```{r}
+library(car)
+vif(new_model)
+```
+```{r}
+new_model_3<-lm(stndfnl ~ 
+                  atndrte+priGPA+ 
+                  I(priGPA^2)+ACT+ 
+                  atndrte*priGPA+
+                  atndrte*ACT, 
+                data=df_2)
+summary(new_model_3)
+```
+```{r}
+summary(df_2$priGPA)
+summary(df_2$ACT)
+```
+```{r}
+#extracting from model
+new_model_3$coefficients[2]+
+new_model_3$coefficients[6]*summary(df_2$priGPA)[4]+
+new_model_3$coefficients[7]*summary(df_2$ACT)[4]
+#manually
+-0.01915104+0.004586913*2.586775+0.0006168295*22.51029
+```
+
+```{r}
+library(margins)
+margin<-margins(new_model_3)
+summary(margin)
+```
+

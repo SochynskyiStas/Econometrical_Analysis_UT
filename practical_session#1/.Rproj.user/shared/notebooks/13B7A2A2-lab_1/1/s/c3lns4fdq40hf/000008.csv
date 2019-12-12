@@ -1,0 +1,5 @@
+"0","library(""ggplot2"")"
+"0","ggplot(df)+"
+"0","  geom_point(aes(x = df$cigs, y = df$bwght))+"
+"0","  ggtitle(""Relationship between birthweight of child and cigs smoked per day"")+"
+"0","  xlab(""Cigarettes smoked per day"") + ylab(""Birth weight of a child"")"
